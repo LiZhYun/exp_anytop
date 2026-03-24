@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+
+# Logs and tracking
+wandb/
+
+# Data
+dataset/
+datasets/
+
+# Planning/docs (generated)
+codebase_analysis.md
+codebase_map.md
+implementation.md
+pipeline.md
+plan.md

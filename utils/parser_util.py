@@ -150,6 +150,10 @@ def add_training_options(parser):
                        help="If True, will use EMA model averaging.")
     group.add_argument("--balanced", action='store_true',
                        help="Use balancing sampler for fairness between topologies")
+    group.add_argument("--wandb_project", default="anytop", type=str,
+                       help="WandB project name (used when --ml_platform_type WandBPlatform).")
+    group.add_argument("--wandb_entity", default="", type=str,
+                       help="WandB entity (user or team). Empty uses the default entity.")
 
 def add_sampling_options(parser):
     group = parser.add_argument_group('sampling')
@@ -235,6 +239,30 @@ def add_evaluation_options(parser):
     group.add_argument("--eval_gen_dir", required=True, type=str, help="Path to gen dir.")
     group.add_argument("--characters_to_exclude", default='MouseyNoFingers,Mousey_m,Trex,SabreToothTiger,Raptor2', type=str, help="Comma separated list of characters to exclude. The default is character with more than 40 motions.")
     group.add_argument("--unique_str", default='', type=str, help="A string to be added to the file name to identify a specific change. Should start with '_'.")
+
+def add_encoder_options(parser):
+    group = parser.add_argument_group('encoder')
+    group.add_argument("--enc_num_queries", default=4, type=int,
+                       help="Number of spatial query slots K in attention pooling.")
+    group.add_argument("--enc_fsq_dims", default=4, type=int,
+                       help="Number of FSQ dimensions K_fsq per spatial slot.")
+    group.add_argument("--enc_fsq_levels", default=5, type=int,
+                       help="Number of quantization levels L per FSQ dimension.")
+    group.add_argument("--z_drop_prob", default=0.1, type=float,
+                       help="Probability of replacing z with null embedding (CFG dropout).")
+    group.add_argument("--cfg_scale", default=1.0, type=float,
+                       help="Classifier-free guidance scale at inference (w >= 1.0).")
+
+
+def train_conditioned_args():
+    parser = ArgumentParser()
+    add_base_options(parser)
+    add_data_options(parser)
+    add_model_options(parser)
+    add_encoder_options(parser)
+    add_training_options(parser)
+    return parser.parse_args()
+
 
 def train_args():
     parser = ArgumentParser()

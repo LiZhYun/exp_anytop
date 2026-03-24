@@ -40,6 +40,24 @@ def get_gmdm_args(args):
             'cond_mask_prob': args.cond_mask_prob, 'max_joints': max_joints, 
             'feature_len':feature_len,  'skip_t5': args.skip_t5, 'value_emb': args.value_emb, 'root_input_feats': 13}
 
+def get_conditioned_args(args):
+    base = get_gmdm_args(args)
+    base.update({
+        'enc_num_queries': args.enc_num_queries,
+        'enc_fsq_dims':    args.enc_fsq_dims,
+        'enc_fsq_levels':  args.enc_fsq_levels,
+        'z_drop_prob':     args.z_drop_prob,
+    })
+    return base
+
+
+def create_conditioned_model_and_diffusion(args):
+    from model.anytop_conditioned import AnyTopConditioned
+    model     = AnyTopConditioned(**get_conditioned_args(args))
+    diffusion = create_gaussian_diffusion(args)
+    return model, diffusion
+
+
 def create_gaussian_diffusion(args):
     # default params
     predict_xstart = True  # we always predict x_start (a.k.a. x0), that's our deal!

@@ -423,13 +423,13 @@ def create_data_samples():
     squared_positions_error = dict()
     cond = dict()
     
-    for object_type in objects:
-        if object_type in NO_BVHS:
-            continue
+    from tqdm import tqdm
+    objects_to_process = [obj for obj in objects if obj not in NO_BVHS]
+    for object_type in tqdm(objects_to_process, desc='Processing animals', unit='animal'):
         cur_counter = files_counter
         files_counter, frames_counter, max_joints, object_cond = process_object(object_type, files_counter, frames_counter, max_joints, squared_positions_error)
         cond[object_type] = object_cond
-        objects_counter[object_type] = files_counter - cur_counter 
+        objects_counter[object_type] = files_counter - cur_counter
 
     print('Total clips: %d, Frames: %d, Duration: %fm' %(files_counter, frames_counter, frames_counter / 12.5 / 60))
     print('max joints: %d' %(max_joints))

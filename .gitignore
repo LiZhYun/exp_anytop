@@ -23,3 +23,7 @@ codebase_map.md
 implementation.md
 pipeline.md
 plan.md
+
+# checkpoints
+*.pt
+save/

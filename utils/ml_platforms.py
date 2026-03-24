@@ -18,6 +18,9 @@ class MLPlatform:
     def report_media(self, title, series, iteration, local_path):
         pass
 
+    def report_figure(self, name, fig, iteration):
+        pass
+
     def report_args(self, args, name):
         pass
 
@@ -86,6 +89,14 @@ class WandBPlatform(MLPlatform):
     def report_media(self, title, series, iteration, local_path):
         files = glob.glob(f'{local_path}/*.mp4')
         self.wandb.log({series: [self.wandb.Video(file, format='mp4', fps=20) for file in files]}, step=iteration)
+
+    def report_figure(self, name, fig, iteration):
+        import io
+        from PIL import Image as PILImage
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', dpi=100, bbox_inches='tight')
+        buf.seek(0)
+        self.wandb.log({name: self.wandb.Image(PILImage.open(buf))}, step=iteration)
 
     def report_args(self, args, name):
         self.wandb.config.update(args)  # , allow_val_change=True) # use allow_val_change ONLY if you want to change existing args (e.g., overwrite)

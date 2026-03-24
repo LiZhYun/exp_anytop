@@ -40,14 +40,17 @@ class AttentionPool(nn.Module):
         self.queries = nn.Parameter(torch.randn(num_queries, d_model))
         self.attn = nn.MultiheadAttention(d_model, num_heads, dropout=dropout, batch_first=True)
 
-    def forward(self, h, joints_mask):
+    def forward(self, h, joints_mask, return_attn=False):
         # h:           [B, T, J, D']
         # joints_mask: [B, J]  True=real joint, False=padding
         B, T, J, D = h.shape
         h_flat = h.reshape(B * T, J, D)
         queries = self.queries.unsqueeze(0).expand(B * T, -1, -1)             # [B*T, K, D']
         key_padding_mask = ~joints_mask.unsqueeze(1).expand(B, T, J).reshape(B * T, J)
-        out, _ = self.attn(queries, h_flat, h_flat, key_padding_mask=key_padding_mask)
+        out, attn = self.attn(queries, h_flat, h_flat, key_padding_mask=key_padding_mask,
+                              need_weights=return_attn, average_attn_weights=True)
+        if return_attn:
+            return out.view(B, T, self.num_queries, D), attn.view(B, T, self.num_queries, J)
         return out.view(B, T, self.num_queries, D)                             # [B, T, K, D']
 
 
@@ -83,12 +86,15 @@ class FSQ(nn.Module):
         super().__init__()
         self.levels = levels
 
-    def forward(self, x):
+    def forward(self, x, return_codes=False):
         x_bounded = torch.tanh(x)
         x_scaled  = (x_bounded + 1) / 2 * (self.levels - 1)      # [0, L-1]
         x_round   = torch.round(x_scaled)
         x_st      = x_scaled + (x_round - x_scaled).detach()      # straight-through
-        return x_st / (self.levels - 1) * 2 - 1                   # back to [-1, 1]
+        out = x_st / (self.levels - 1) * 2 - 1                    # back to [-1, 1]
+        if return_codes:
+            return out, x_round.long()
+        return out
 
 
 class MotionEncoder(nn.Module):
@@ -111,7 +117,7 @@ class MotionEncoder(nn.Module):
         self.fsq        = FSQ(fsq_levels)
         self.post_fsq   = nn.Linear(fsq_dims, d_model)
 
-    def forward(self, source_motion, source_offsets, source_mask):
+    def forward(self, source_motion, source_offsets, source_mask, return_intermediates=False):
         # source_motion:  [B, J, 13, T]
         # source_offsets: [B, J, 3]
         # source_mask:    [B, J]  True=real joint, False=padding
@@ -126,7 +132,16 @@ class MotionEncoder(nn.Module):
         positions = torch.arange(T, device=x_emb.device).view(1, T, 1).float()
         x_emb = x_emb + create_sin_embedding(positions, self.d_model).unsqueeze(2)  # [1, T, 1, D']
 
-        s     = self.attn_pool(x_emb, source_mask)            # [B, T, K, D']
-        t_out = self.temporal_cnn(s)                           # [B, N', K, D']
-        z_quant = self.fsq(self.pre_fsq(t_out))               # [B, N', K, fsq_dims]
-        return self.post_fsq(z_quant)                          # [B, N', K, D']
+        if return_intermediates:
+            s, attn_weights = self.attn_pool(x_emb, source_mask, return_attn=True)
+        else:
+            s = self.attn_pool(x_emb, source_mask)
+
+        t_out = self.temporal_cnn(s)
+        z_pre = self.pre_fsq(t_out)
+
+        if return_intermediates:
+            z_quant, z_codes = self.fsq(z_pre, return_codes=True)
+            z_out = self.post_fsq(z_quant)
+            return z_out, {'attn_weights': attn_weights, 'z_codes': z_codes}
+        return self.post_fsq(self.fsq(z_pre))

@@ -12,6 +12,9 @@ build/
 
 # Logs and tracking
 wandb/
+logs/
+*.err
+*.out
 
 # Data
 dataset/

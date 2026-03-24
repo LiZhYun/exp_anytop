@@ -29,7 +29,9 @@ def main():
         args.save_dir = save_dir
         
     ml_platform_type = eval(args.ml_platform_type)
-    ml_platform = ml_platform_type(save_dir=args.save_dir)
+    ml_platform = ml_platform_type(save_dir=args.save_dir,
+                                    project=args.wandb_project,
+                                    entity=args.wandb_entity or None)
     ml_platform.report_args(args, name='Args')
 
     if save_dir is None:
